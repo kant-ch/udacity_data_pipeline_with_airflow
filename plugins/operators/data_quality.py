@@ -9,24 +9,26 @@ class DataQualityOperator(BaseOperator):
     @apply_defaults
     def __init__(self,
                  redshift_conn_id="",
-                 table_list=[],
+                 check=[],
                  *args, **kwargs):
 
         super(DataQualityOperator, self).__init__(*args, **kwargs)
         self.redshift_conn_id=redshift_conn_id,
-        self.table_list=table_list
+        self.check=check
 
     def execute(self, context):
         redshift_hook = PostgresHook(self.redshift_conn_id)
 
-        for table_ in self.table_list:
-            records = redshift_hook.get_records(f"SELECT COUNT(*) FROM {table_}")
-
-            if len(records) < 1 or len(records[0]) < 1:
-                raise ValueError(f"Data quality check failed. {table_} returned no results")
+        for elem in self.check:
+            records = redshift_hook.get_records(elem['check_sql'])
             num_records = records[0][0]
 
-            if num_records < 1:
-                raise ValueError(f"Data quality check failed. {table_} contained 0 rows")
+            self.log.info(f"Test case: {elem['test_case']}")
+            if elem['compare_type'] == '=' and num_records != elem['expected_result']:
+                raise ValueError(f"Data quality check failed for case {elem['test_case']}")
+            elif elem['compare_type'] == '>' and num_records <= elem['expected_result']:
+                raise ValueError(f"Data quality check failed for case {elem['test_case']}")
+            elif elem['compare_type'] == '<' and num_records >= elem['expected_result']:
+                raise ValueError(f"Data quality check failed for case {elem['test_case']}")
             
-            self.log.info(f"Data quality on table {table_} check passed with {records[0][0]} records")
+            self.log.info(f"Data quality check status: Pass")

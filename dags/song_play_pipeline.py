@@ -13,6 +13,7 @@ default_args = {
     "depends_on_past": False,
     "retries": 3,
     "retry_delay": timedelta(minutes=5),
+    "catchup": False
 }
 
 @dag(
@@ -86,7 +87,26 @@ def song_play_pipeline():
     run_quality_checks = DataQualityOperator(
         task_id='Run_data_quality_checks',
         redshift_conn_id="redshift",
-        table_list=['songplays', 'users', 'songs', 'artists', 'time']
+        check=[
+            {
+                'test_case': 'Check null in play_id column of songplays table',
+                'check_sql': 'select count(*) from songplays where playid is null',
+                'expected_result': 0,
+                'compare_type': '='
+            },
+            {
+                'test_case': 'Check record of table user greater than 0',
+                'check_sql': 'select count(*) from users',
+                'expected_result': 0,
+                'compare_type': '>'
+            },
+            {
+                'test_case': 'Check year of the songs released from songs table',
+                'check_sql': "select count(*) from songs where year > extract(year from CURRENT_DATE)",
+                'expected_result': 1,
+                'compare_type': '<'
+            },
+        ]
     )
 
     end_operator = DummyOperator(task_id='End_execution')

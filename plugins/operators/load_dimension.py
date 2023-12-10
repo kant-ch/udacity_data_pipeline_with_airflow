@@ -22,8 +22,10 @@ class LoadDimensionOperator(BaseOperator):
 
     def execute(self, context):
         redshift = PostgresHook(postgres_conn_id = self.redshift_conn_id)
+
+        self.log.info(f'Start transform staging data to {self.table} dimension table')
         if self.delete_load:
             self.log.info(f'Truncate table {self.table}')
 
-        self.log.info('Start loading fact table to redshift')
         redshift.run(self.insert_sql)
+        self.log.info('Transform data to Redshift finished')

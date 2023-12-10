@@ -24,13 +24,14 @@ class StageToRedshiftOperator(BaseOperator):
         self.json_path = json_path
 
     def execute(self, context):
-
+        
+        self.log.info(f"Processing copy to table {self.table}")
         redshift = PostgresHook(postgres_conn_id=self.redshift_conn_id)
+
         self.log.info("Delete data in the Redshift table")
         redshift.run(f"DELETE FROM {self.table}")
 
-        # rendered_key = self.s3_key.format(**context)
-
+        self.log.info("Start Loading data from s3 to redshift")
         if self.json_path:
             copy_sql = f"""
             copy {self.table} from 's3://{self.s3_bucket}/{self.s3_key}' 
@@ -47,7 +48,7 @@ class StageToRedshiftOperator(BaseOperator):
             region 'us-east-1';                  
             """
         
-        self.log.info("Start Loading data from s3 to redshift")
+        self.log.info("Copy data from s3 to redshift finished")
         redshift.run(copy_sql)
 
 
